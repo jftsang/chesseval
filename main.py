@@ -10,13 +10,34 @@ import fastapi
 import pydantic
 import uvicorn
 from fastapi import HTTPException
+from starlette.requests import Request
 from starlette.responses import Response, JSONResponse
+from starlette.staticfiles import StaticFiles
+from starlette.templating import Jinja2Templates
+from streamerate import stream
 
 ENGINE = "/Users/jmft2/.local/bin/stockfish.exe"
+default_fen = chess.STARTING_FEN
 
 app = fastapi.FastAPI()
+app.mount(
+    "/static",
+    StaticFiles(directory="static"),
+    name="static",
+)
+app.mount(
+    "/jspgnviewer",
+    StaticFiles(directory="jspgnviewer/src/main"),
+    name="jspgnviewer",
+)
+app.mount(
+    "/img",
+    StaticFiles(directory="jspgnviewer/img"),
+    name="img",
+)
 
-default_fen = chess.STARTING_FEN
+
+templates = Jinja2Templates(directory="templates")
 
 
 def sanitize_povscore(ps: chess.engine.PovScore) -> str:
@@ -81,6 +102,11 @@ class GameReview:
         finally:
             await engine.quit()
 
+    def as_pgn(self):
+        exporter = chess.pgn.StringExporter()
+        output = self.game.accept(exporter)
+        return output
+
 
 reviews: dict[str, GameReview] = {}
 
@@ -88,9 +114,6 @@ reviews: dict[str, GameReview] = {}
 @app.post("/review")
 async def create_review(pgn: str) -> JSONResponse:
     h = uuid.uuid4().hex
-    if h in reviews:
-        return h
-
     game: chess.pgn.Game = chess.pgn.read_game(StringIO(pgn))
     reviews[h] = GameReview(game)
     asyncio.create_task(reviews[h].do_review())
@@ -118,8 +141,26 @@ async def get_review(gid: str) -> str | None:
     return output
 
 
+@app.get("/view")
+async def view(request: Request) -> Response:
+    pgn = open("games/yahoo.pgn").read()
+    return templates.TemplateResponse("board.html", {"request": request, "pgn": pgn})
+
+
+@app.get("/view/{h}")
+async def view(request: Request, h: str) -> Response:
+    try:
+        gr = reviews[h]
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Review not found")
+    return templates.TemplateResponse(
+        "board.html", {"request": request, "pgn": gr.as_pgn()}
+    )
+
+
 def main() -> None:
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
-main()
+if __name__ == "__main__":
+    main()
