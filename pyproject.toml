@@ -1,0 +1,12 @@
+[project]
+name = "chesseval"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.14"
+dependencies = [
+    "black>=25.11.0",
+    "fastapi>=0.121.2",
+    "python-chess>=1.999",
+    "pyxtension>=1.17.1",
+    "uvicorn>=0.38.0",
+]
