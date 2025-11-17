@@ -1,0 +1,16 @@
+[Event "Vs. Computer"]
+[Site "Chess.com"]
+[Date "2025-11-17"]
+[White "Karim"]
+[Black "jmft2"]
+[Result "0-1"]
+[WhiteElo "850"]
+[BlackElo "535"]
+[TimeControl "-"]
+[Termination "jmft2 won by checkmate"]
+1. f4 d5 2. e3 h5 3. Bb5+ c6 4. Be2 Nf6 5. Kf1 Ne4 6. Na3 g5 7. Nb1 gxf4 8. b4
+fxe3 9. dxe3 Bg7 10. b5 Bxa1 11. Bb2 Bxb2 12. g4 cxb5 13. Bxb5+ Bd7 14. Qe1
+Bxb5+ 15. c4 Bxc4+ 16. Kg2 hxg4 17. a4 d4 18. a5 dxe3 19. h3 gxh3+ 20. Rxh3 Rxh3
+21. Nxh3 Nc6 22. Qxe3 Bd5 23. Ng5 Nxg5+ 24. Kf2 Ne4+ 25. Kg1 Qd6 26. Qe2 Qc5+
+27. Kg2 O-O-O 28. Qg4+ Kb8 29. Qe2 Nc3+ 30. Qf3 Bxf3+ 31. Kxf3 Qd5+ 32. Kg4 Ne5+
+33. Kh4 Qf3 34. Kg5 Rg8+ 35. Kh6 Qh3# 0-1

@@ -1,66 +1,42 @@
-<html>
-  <head>
-    <style type="text/css" media="screen">
-      <!-- @import url(/jspgnviewer/examples/test.css); -->
-    </style>
-
-    <script
-      type="text/javascript"
-      language="javascript"
-      src="/jspgnviewer/chess-game.js">
-      </script>
-    <script
-      type="text/javascript"
-      language="javascript"
-      src="/jspgnviewer/converter.js">
-      </script>
-    <script
-      type="text/javascript"
-      language="javascript"
-      src="/jspgnviewer/pgn.js">
-      </script>
-    <script
-      type="text/javascript"
-      language="javascript"
-      src="/jspgnviewer/yahoo-format.js">
-      </script>
-    <script
-      type="text/javascript"
-      language="javascript"
-      src="/jspgnviewer/board.js">
-      </script>
-  </head>
-
-  <body>
-    <table border=0>
-      <tr>
-        <td width="600px">
-            <div id='area_board' style="">
-            </div>
-<div id='area' style="visibility: hidden;display:none">
-{{ pgn }}
+<html lang="en">
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/@mliebelt/pgn-viewer@1.6.11/lib/dist.min.js"></script>
+</head>
+<body>
+<div id="pgn" style="display: none">
+    {{ pgn }}
 </div>
-<script language="JavaScript">
-  const game = new ChessGame(document.getElementById('area').innerHTML);
-  const conv = new Converter(game.format);
-  conv.convert();
-  // the most default board with the default settings
-  const brd = new Board('area', {});
-  brd.opts['imagePrefix'] = '/img/alpha/';
-  brd.opts['buttonPrefix'] = '/img/buttons-svg/';
-  brd.opts['blackSqColor'] = 'url("/img/backgrounds/darksquare.svg")';
-  brd.opts['whiteSqColor'] = 'url("img/backgrounds/lightsquare.svg")';
-  brd.opts['sqHighlightWhite'] = 'url("img/backgrounds/lightsquare-highlight.svg")';
-  brd.opts['sqHighlightBlack'] = 'url("img/backgrounds/darksquare-highlight.svg")';
-  brd.opts['moveFontSize'] = '12pt';
-  brd.opts['boardSize'] = '250px';
-  brd.opts['squareSize'] = '42px';
-  brd.opts['pieceSize'] = '42px';
-  brd.opts['buttonSize'] = '42px';
-  brd.init();
+<div id="b1" style="width: 360px"></div>
+<script>
+  const pgn = document.getElementById("pgn").innerText
+
+  options = {
+    position: 'start',
+    showCoords: true,
+    orientation: 'white',
+    theme: 'sportverlag',
+    pieceStyle: 'uscf',
+    figurine: 'merida',
+    locale: 'en',
+    timerTime: '',
+    width: '1000px',
+    boardSize: '600px',
+    layout: 'left',
+    headers: true,
+    showFen: true,
+    coordsInner: true,
+    manyGames: false,
+    coordsFactor: '-5',
+    coordsFontSize: '',
+    colorMarker: 'circle',
+    startPlay: '',
+    hideMovesBefore: false,
+    notation: 'short',
+    notationLayout: 'list',
+    resizable: true,
+  };
+
+  const {base, board} = PGNV.pgnEdit('b1', {pgn: pgn, ...options});
 </script>
-          </td>
-      </tr>
-    </table>
-  </body>
+</body>
 </html>
