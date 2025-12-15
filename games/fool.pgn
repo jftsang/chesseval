@@ -1,0 +1,7 @@
+[Event "Fool's Mate"]
+[Date "2025-11-17"]
+[White "fool"]
+[Black "genius"]
+[Result "0-1"]
+[Termination "genius won by checkmate"]
+1. f3 e5 2. g4 Qh4 0-1
