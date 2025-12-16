@@ -1,5 +1,5 @@
 import asyncio
-from functools import cache
+from functools import lru_cache
 
 import chess
 import chess.engine
@@ -15,7 +15,7 @@ class GameReviewer:
     async def create_review(self, game: chess.pgn.Game) -> chess.pgn.Game:
         transport, engine = await chess.engine.popen_uci(ENGINE)
 
-        @cache
+        @lru_cache(maxsize=1024)
         async def _eval_fen(fen: str) -> chess.engine.PovScore:
             board = chess.Board(fen)
             info = await engine.analyse(board, chess.engine.Limit(time=0.1))
@@ -29,7 +29,6 @@ class GameReviewer:
 
             board = node.board()
             score = await _eval_fen(board.fen())
-            node.comment = sanitize_povscore(score.white())
 
             if prevscore is not None:
                 # board.turn is the turn of the player about to take the
@@ -49,6 +48,9 @@ class GameReviewer:
                     node.nags.add(chess.pgn.NAG_MISTAKE)
                 elif deficit >= 100:  # loses a pawn
                     node.nags.add(chess.pgn.NAG_DUBIOUS_MOVE)
+
+            if node.nags:
+                node.comment = sanitize_povscore(score.white())
 
             coros = []
             for var in node.variations:

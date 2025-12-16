@@ -1,13 +1,17 @@
+import hashlib
+from io import StringIO
 from pathlib import Path
+from typing import Annotated
 
 import chess
 import chess.engine
 import chess.pgn
 import fastapi
 import uvicorn
-from fastapi import HTTPException
+from fastapi import HTTPException, Form
+from starlette import status
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import Response, RedirectResponse
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
@@ -73,6 +77,29 @@ async def list_games(request: Request) -> Response:
     gm = GameManager()
     return templates.TemplateResponse(
         "games.html", {"request": request, "games": gm.list()}
+    )
+
+
+@app.get("/new")
+async def submit_new_game(request: Request) -> Response:
+    return templates.TemplateResponse("new.html", {"request": request})
+
+
+@app.post("/submit")
+async def submit_new_game_resp(
+    request: Request, pgn: Annotated[str, Form()]
+) -> Response:
+    gm = GameManager()
+    sio = StringIO(pgn)
+    game = chess.pgn.read_game(sio)
+
+    normalized_pgn = gm.as_pgn(game)
+    newkey = hashlib.sha256(normalized_pgn.encode("utf-8")).hexdigest()[:12] + ".pgn"
+    gm.save(newkey, game)
+
+    return RedirectResponse(
+        app.url_path_for("get_review", key=newkey),
+        status_code=status.HTTP_303_SEE_OTHER,
     )
 
 
