@@ -1,4 +1,6 @@
 import hashlib
+import os
+from contextlib import asynccontextmanager
 from io import StringIO
 from pathlib import Path
 from typing import Annotated
@@ -6,25 +8,55 @@ from typing import Annotated
 import chess
 import chess.engine
 import chess.pgn
+import dotenv
 import fastapi
 import uvicorn
-from fastapi import HTTPException, Form
+from fastapi import Depends, FastAPI, Form, HTTPException
+from sqlmodel import Field, SQLModel, Session, create_engine
 from starlette import status
 from starlette.requests import Request
-from starlette.responses import Response, RedirectResponse
+from starlette.responses import RedirectResponse, Response
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 
 from game_reviewer import GameReviewer
 
-app = fastapi.FastAPI()
-app.mount(
-    "/static",
-    StaticFiles(directory="static"),
-    name="static",
-)
+dotenv.load_dotenv()
+
+DATABASE = os.getenv("DATABASE")
+connect_args = {
+    # "check_same_thread": False
+}
+engine = create_engine(DATABASE, connect_args=connect_args)
+
+
+def get_session():
+    with Session(engine) as session:
+        yield session
+
+
+SessionDep = Annotated[Session, Depends(get_session)]
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    SQLModel.metadata.create_all(engine)
+    app.mount(
+        "/static",
+        StaticFiles(directory="static"),
+        name="static",
+    )
+    yield
+
+
+app = fastapi.FastAPI(lifespan=lifespan)
 
 templates = Jinja2Templates(directory="templates")
+
+
+class GameDTO(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    pgn: str
 
 
 class GameManager:

@@ -7,8 +7,11 @@ dependencies = [
     "black>=25.11.0",
     "fastapi>=0.121.2",
     "jinja2>=3.1.6",
+    "psycopg2-binary",
     "python-chess>=1.999",
+    "python-dotenv",
     "python-multipart",
     "pyxtension>=1.17.1",
+    "sqlmodel>=0.0.27",
     "uvicorn>=0.38.0",
 ]
