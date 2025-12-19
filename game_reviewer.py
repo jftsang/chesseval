@@ -1,13 +1,17 @@
 import asyncio
+import os
 from functools import lru_cache
 
 import chess
 import chess.engine
 import chess.pgn
+import dotenv
 
 from utils import sanitize_povscore
 
-ENGINE = "/Users/jmft2/.local/bin/stockfish.exe"
+dotenv.load_dotenv()
+
+ENGINE = os.getenv("STOCKFISH")
 default_fen = chess.STARTING_FEN
 
 
