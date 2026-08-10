@@ -1,7 +1,6 @@
 import chess
 import chess.engine
 
-ENGINE = "/Users/jmft2/.local/bin/stockfish.exe"
 default_fen = chess.STARTING_FEN
 
 
@@ -15,13 +14,16 @@ def sanitize_povscore(score: chess.engine.Score) -> str:
 
 def sanitize_infodict(board: chess.Board, infod: chess.engine.InfoDict) -> dict:
     san = infod.copy()
-    san["score"] = sanitize_povscore(san["score"].white())
+    # san["score"] = sanitize_povscore(san["score"].white())
+    san["score"] = san["score"].white().score(mate_score=20_00)
 
     san["continuation"] = []
     board = board.copy()
-    for move in san["pv"]:
-        san["continuation"].append(board.san(move))
-        board.push(move)
+    if "pv" in san:
+        for move in san["pv"]:
+            san["continuation"].append(board.san(move))
+            board.push(move)
+        del san["pv"]
 
     game = chess.pgn.Game()
     game.setup(board)

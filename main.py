@@ -1,41 +1,27 @@
 import hashlib
-import os
 from contextlib import asynccontextmanager
 from io import StringIO
-from pathlib import Path
 from typing import Annotated
 
 import chess
 import chess.engine
 import chess.pgn
-import dotenv
 import fastapi
 import uvicorn
-from fastapi import Depends, FastAPI, Form, HTTPException
-from sqlmodel import Field, SQLModel, Session, create_engine
+from fastapi import Depends, FastAPI, Form
+from sqlmodel import SQLModel, select
 from starlette import status
+from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
+from starlette.websockets import WebSocket
 
-from game_reviewer import GameReviewer
-
-dotenv.load_dotenv()
-
-DATABASE = os.getenv("DATABASE")
-connect_args = {
-    # "check_same_thread": False
-}
-engine = create_engine(DATABASE, connect_args=connect_args)
-
-
-def get_session():
-    with Session(engine) as session:
-        yield session
-
-
-SessionDep = Annotated[Session, Depends(get_session)]
+from db import engine, get_session
+from game_reviewer import ENGINE, GameReviewer
+from models import Game, GameDTO
+from utils import sanitize_infodict
 
 
 @asynccontextmanager
@@ -54,93 +40,104 @@ app = fastapi.FastAPI(lifespan=lifespan)
 templates = Jinja2Templates(directory="templates")
 
 
-class GameDTO(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    pgn: str
+@app.get("/review/{id}")
+async def get_review(
+    request: Request, id: int, session=Depends(get_session)
+) -> Response:
+    dto: GameDTO | None = session.get(GameDTO, id)
+    if dto is None:
+        raise HTTPException(status_code=404)
+    game = Game.from_dto(dto)
 
-
-class GameManager:
-    directory: Path = Path(__file__).parent / "games"
-
-    def list(self) -> list[str]:
-        return [
-            f.name
-            for f in self.directory.iterdir()
-            if f.is_file() and f.suffix == ".pgn"
-        ]
-
-    def load(self, key: str) -> chess.pgn.Game:
-        p = self.directory / key
-        if not p.exists():
-            raise HTTPException(status_code=404, detail="Game not found")
-        if not p.parent == self.directory:
-            raise HTTPException(status_code=403, detail="Game not found")
-
-        with open(p) as f:
-            game = chess.pgn.read_game(f)
-        return game
-
-    def save(self, key: str, game: chess.pgn.Game) -> None:
-        p = self.directory / key
-        if not p.parent == self.directory:
-            raise HTTPException(status_code=403, detail="Game not found")
-
-        with open(p, "w") as f:
-            f.write(self.as_pgn(game))
-
-    def as_pgn(self, game):
-        exporter = chess.pgn.StringExporter()
-        output = game.accept(exporter)
-        return output
-
-
-@app.get("/review/{key}")
-async def get_review(request: Request, key: str) -> Response:
-    gm = GameManager()
-    game = gm.load(key)
     reviewed_game = await GameReviewer().create_review(game)
     return templates.TemplateResponse(
-        "board.html", {"request": request, "pgn": gm.as_pgn(reviewed_game)}
+        "board.html", {"request": request, "pgn": str(game)}
     )
 
 
+@app.websocket("/evaluation")
+async def evaluation_ws(websocket: WebSocket):
+    await websocket.accept()
+    transport, engine = await chess.engine.popen_uci(ENGINE)
+    while True:
+        fen = await websocket.receive_text()
+        board = chess.Board(fen)
+        info = await engine.analyse(board, chess.engine.Limit(time=0.1))
+        san = sanitize_infodict(board, info)
+        await websocket.send_json(san)
+
+
+@app.get("/")
 @app.get("/games")
-async def list_games(request: Request) -> Response:
-    gm = GameManager()
+async def list_games(request: Request, session=Depends(get_session)) -> Response:
+    games = session.exec(select(GameDTO)).all()
     return templates.TemplateResponse(
-        "games.html", {"request": request, "games": gm.list()}
+        "games.html", {"request": request, "games": games}
     )
 
 
-@app.get("/new")
+@app.get("/games/new")
 async def submit_new_game(request: Request) -> Response:
     return templates.TemplateResponse("new.html", {"request": request})
 
 
-@app.post("/submit")
+@app.post("/games/new")
 async def submit_new_game_resp(
-    request: Request, pgn: Annotated[str, Form()]
+    request: Request,
+    pgn: Annotated[str, Form()],
+    name: Annotated[str | None, Form()] = None,
+    session=Depends(get_session),
 ) -> Response:
-    gm = GameManager()
     sio = StringIO(pgn)
     game = chess.pgn.read_game(sio)
+    normalized_pgn = Game.as_pgn(game)
 
-    normalized_pgn = gm.as_pgn(game)
-    newkey = hashlib.sha256(normalized_pgn.encode("utf-8")).hexdigest()[:12] + ".pgn"
-    gm.save(newkey, game)
+    if not name:
+        name = hashlib.sha256(normalized_pgn.encode()).hexdigest()[:8]
+
+    # find existing game with this name
+    existing_game = session.exec(select(GameDTO).where(GameDTO.name == name)).first()
+    if existing_game:
+        return RedirectResponse(
+            app.url_path_for("get_review", id=existing_game.id),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    dto = GameDTO(name=name, pgn=normalized_pgn)
+    session.add(dto)
+    session.commit()
+    session.refresh(dto)
 
     return RedirectResponse(
-        app.url_path_for("get_review", key=newkey),
+        app.url_path_for("get_review", id=dto.id),
         status_code=status.HTTP_303_SEE_OTHER,
     )
 
 
-@app.get("/view/{key}")
-async def view(request: Request, key: str) -> Response:
-    gm = GameManager()
-    game = gm.load(key)
+@app.get("/games/{id}")
+async def view_game(
+    request: Request, id: int, session=Depends(get_session)
+) -> Response:
+    dto: GameDTO | None = session.get(GameDTO, id)
+    if dto is None:
+        raise HTTPException(status_code=404)
+    game = Game.from_dto(dto)
     return templates.TemplateResponse(
-        "board.html", {"request": request, "pgn": gm.as_pgn(game)}
+        "board.html", {"request": request, "pgn": game.as_pgn()}
+    )
+
+
+@app.delete("/games/{id}")
+async def delete_game(
+    request: Request, id: int, session=Depends(get_session)
+) -> Response:
+    dto: GameDTO | None = session.get(GameDTO, id)
+    if dto is None:
+        raise HTTPException(status_code=404)
+    session.delete(dto)
+    session.commit()
+    return RedirectResponse(
+        app.url_path_for("list_games"), status_code=status.HTTP_303_SEE_OTHER
     )
 
 
