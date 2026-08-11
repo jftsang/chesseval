@@ -1,0 +1,14 @@
+{
+  "name": "chesseval-frontend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "mkdir -p dist && cp -r templates dist/ && cp -r static dist/"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@mliebelt/pgn-viewer": "^1.6.11"
+  }
+}

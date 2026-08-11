@@ -2,3 +2,6 @@ database.db
 .env
 node_modules
 .venv
+.DS_Store
+frontend/dist
+__pycache__

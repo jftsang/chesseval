@@ -1,5 +1,4 @@
 from io import StringIO
-from io import StringIO
 from typing import Self
 
 import chess

@@ -1,5 +1,6 @@
 import os
-from typing import Annotated, Any, Generator
+from typing import Annotated, Any
+from collections.abc import Generator
 
 import dotenv
 from fastapi import Depends
