@@ -1,3 +1,4 @@
+from utils import none_throws
 import os
 from typing import Annotated, Any
 from collections.abc import Generator
@@ -8,7 +9,7 @@ from sqlmodel import Session, create_engine
 
 dotenv.load_dotenv()
 
-DATABASE = os.getenv("DATABASE")
+DATABASE = none_throws(os.getenv("DATABASE"))
 connect_args = {
     # "check_same_thread": False
 }

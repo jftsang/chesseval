@@ -3,6 +3,11 @@ import chess.engine
 
 default_fen = chess.STARTING_FEN
 
+def none_throws[T](x: T | None) -> T:
+    if x is None:
+        raise ValueError("Value is None")
+    return x
+
 
 def sanitize_povscore(score: chess.engine.Score) -> str:
     mate = score.mate()

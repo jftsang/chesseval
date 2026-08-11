@@ -7,11 +7,11 @@ import chess.engine
 import chess.pgn
 import dotenv
 
-from utils import sanitize_povscore
+from utils import sanitize_povscore, none_throws
 
 dotenv.load_dotenv()
 
-ENGINE = os.getenv("STOCKFISH")
+ENGINE = none_throws(os.getenv("STOCKFISH"))
 default_fen = chess.STARTING_FEN
 
 
