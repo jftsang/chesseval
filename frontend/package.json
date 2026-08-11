@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "mkdir -p dist && cp -r templates dist/ && cp -r static dist/"
+    "build": "mkdir -p dist && cp -r templates dist/ && cp -r static dist/",
+    "clean": "rm -r dist"
   },
   "author": "",
   "license": "ISC",
